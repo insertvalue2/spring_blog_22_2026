@@ -1,0 +1,173 @@
+{{> layout/header}}
+
+<div class="container p-5">
+    <div class="card">
+        <div class="card-header"><b>회원가입을 해주세요</b></div>
+        <div class="card-body">
+            <form action="/join" method="post" enctype="multipart/form-data" onsubmit="return checkVerify()">
+                <!-- 사용자명 입력 -->
+                <div class="mb-3">
+                    <input type="text" class="form-control" placeholder="Enter username" name="username" required>
+                </div>
+                
+                <!-- 비밀번호 입력 -->
+                <div class="mb-3">
+                    <input type="password" class="form-control" placeholder="Enter password" name="password" required>
+                </div>
+                
+                <!-- 이메일 입력 및 인증번호 발송 -->
+                <div class="mb-3">
+                    <label class="form-label">이메일</label>
+                    <div class="input-group">
+                        <input type="email" class="form-control" id="email" name="email" placeholder="이메일 입력" required>
+                        <button type="button" class="btn btn-outline-secondary" onclick="callSendApi()">인증번호 전송</button>
+                    </div>
+                </div>
+                
+                <!-- 인증번호 입력 (처음에는 숨김) -->
+                <div class="mb-3" id="code-box" style="display:none;">
+                    <label class="form-label">인증번호</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="code" placeholder="인증번호 6자리" maxlength="6">
+                        <button type="button" class="btn btn-outline-secondary" onclick="callVerifyApi()">확인</button>
+                    </div>
+                    <!-- 인증 결과 메시지 표시 영역 -->
+                    <div id="msg" class="form-text"></div>
+                </div>
+                
+                <!-- 인증 완료 여부 저장 (hidden 필드) -->
+                <input type="hidden" id="isEmailVerified" value="false">
+                
+                <!-- 프로필 이미지 업로드 (선택사항) -->
+                <div class="mb-3">
+                    <label for="profileImage" class="form-label">프로필 사진 (선택사항)</label>
+                    <input type="file" class="form-control" id="profileImage" name="profileImage" accept="image/*">
+                    <small class="form-text text-muted">이미지 파일만 업로드 가능합니다 (JPG, PNG, GIF 등)</small>
+                    <small class="form-text text-muted d-block mt-1">💡 프로필 사진을 등록하지 않아도 회원가입이 가능합니다.</small>
+                </div>
+                
+                <!-- 회원가입 버튼 -->
+                <button type="submit" class="btn btn-primary form-control" id="joinBtn" disabled>회원가입</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{{> layout/footer}}
+
+<script>
+
+    // 이메일 전송 API 호출 (AJAX)
+    async function callSendApi() {
+        // 이메일 입력값 가져오기
+        let email = document.querySelector("#email").value;
+
+        // 이메일 입력 확인
+        if (!email) {
+            alert("이메일을 입력해주세요.");
+            return;
+        }
+
+        try {
+            // fetch API로 POST 요청
+            // - method: "POST" - POST 방식으로 요청
+            // - headers: 요청 헤더 설정 (Content-Type: application/json)
+            // - body: 요청 본문 (JSON 형식으로 변환)
+            let response = await fetch("/api/email/send", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"  // JSON 형식으로 전송
+                },
+                body: JSON.stringify({ email: email })  // 객체를 JSON 문자열로 변환
+            });
+
+            // 응답 처리
+            if (response.ok) {
+                // HTTP 상태 코드가 200~299 범위 (성공)
+                alert("인증번호가 전송되었습니다! 메일함을 확인하세요.");
+                // 인증번호 입력창 보이기
+                document.querySelector("#code-box").style.display = "block";
+            } else {
+                // 서버에서 에러 응답 (400, 500 등)
+                let error = await response.json();
+                alert("실패: " + (error.message || "메일 발송 실패"));
+            }
+        } catch (e) {
+            // 네트워크 오류 등 예외 처리
+            console.log(e);
+            alert("서버 통신 오류: " + e.message);
+        }
+    }
+
+
+    // 인증번호 확인 API 호출 (AJAX)
+    async function callVerifyApi() {
+        // 이메일과 인증번호 입력값 가져오기
+        let email = document.querySelector("#email").value;
+        let code = document.querySelector("#code").value;
+
+        // 인증번호 입력 확인
+        if (!code) {
+            alert("인증번호를 입력해주세요.");
+            return;
+        }
+
+        try {
+            // fetch API로 POST 요청
+            let response = await fetch("/api/email/verify", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ email: email, code: code })
+            });
+
+            // 응답 본문을 JSON으로 파싱
+            let result = await response.json();
+            let msgBox = document.querySelector("#msg");
+
+            if (response.ok) {
+                // 인증 성공
+                // - 메시지 표시 (초록색)
+                msgBox.innerHTML = "<span style='color:green'> 인증되었습니다.</span>";
+                // - 인증 완료 상태 저장 (hidden 필드)
+                document.querySelector("#isEmailVerified").value = "true";
+                // - 이메일 수정 불가 처리 (readOnly 속성 추가)
+                document.querySelector("#email").readOnly = true;
+                // - 회원가입 버튼 활성화
+                document.querySelector("#joinBtn").disabled = false;
+            } else {
+                // 인증 실패
+                // - 메시지 표시 (빨간색)
+                msgBox.innerHTML = "<span style='color:red'> 인증번호가 틀렸습니다.</span>";
+                // - 인증 미완료 상태로 변경
+                document.querySelector("#isEmailVerified").value = "false";
+                // - 회원가입 버튼 비활성화
+                document.querySelector("#joinBtn").disabled = true;
+            }
+        } catch (e) {
+            // 네트워크 오류 등 예외 처리
+            console.log(e);
+            alert("오류 발생: " + e.message);
+        }
+    }
+
+
+    // 1. 회원가입 폼 제출 시 최종 체크
+    // 2. 중요: form의 onsubmit 이벤트에서 호출됨
+    // 2.1 이메일 인증을 완료하지 않으면 폼 제출을 막음 (return false)
+    // 2.2 인증이 완료되었으면 폼 제출 허용 (return true)
+    function checkVerify() {
+        // hidden 필드에서 인증 완료 여부 확인
+        let isVerified = document.querySelector("#isEmailVerified").value;
+        
+        if (isVerified !== "true") {
+            // 인증이 완료되지 않았으면
+            alert("이메일 인증을 먼저 완료해주세요.");
+            return false; // 폼 제출 막기
+        }
+        
+        // 인증이 완료되었으면
+        return true; // 폼 제출 허용 (일반 form submit 진행)
+    }
+</script>

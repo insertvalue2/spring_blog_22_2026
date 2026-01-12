@@ -1,0 +1,63 @@
+{{> layout/header}}
+
+<div class="container p-5">
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0"><b>결제 내역</b></h4>
+        </div>
+
+        <div class="card-body">
+            {{#paymentList}}
+            <!-- 결제 내역 반복 -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h5 class="card-title mb-2">결제 #{{id}}</h5>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-receipt"></i> 주문번호: {{merchantUid}}
+                            </p>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-key"></i> 결제번호: {{impUid}}
+                            </p>
+                            <p class="text-muted mb-2">
+                                <i class="fas fa-calendar"></i> 결제일: {{paidAt}}
+                            </p>
+                            <p class="text-muted mb-0">
+                                <i class="fas fa-info-circle"></i> 상태: 
+                                <span class="badge bg-success">{{statusDisplay}}</span>
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-primary fs-6 mb-2 d-block">+{{amount}} P</span>
+                            {{#isRefundable}}
+                                <a href="/refund/request/{{id}}" class="btn btn-outline-danger btn-sm">
+                                    환불 요청
+                                </a>
+                            {{/isRefundable}}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {{/paymentList}}
+            {{^paymentList}}
+            <div class="text-center py-5">
+                <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">결제 내역이 없습니다</h5>
+                <p class="text-muted">포인트를 충전해보세요!</p>
+                <a href="/user/point/charge" class="btn btn-primary">포인트 충전하기</a>
+            </div>
+            {{/paymentList}}
+
+            <div class="mt-4">
+                <a href="/refund/list" class="btn btn-info">
+                    <i class="fas fa-undo"></i> 환불 요청 내역
+                </a>
+
+                <a href="/user/detail" class="btn btn-secondary">회원정보로 돌아가기</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{> layout/footer}}

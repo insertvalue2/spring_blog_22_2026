@@ -1,0 +1,205 @@
+{{> layout/header}}
+<div class="container py-5 px-2">
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0"><b>환불 요청 관리</b></h4>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover table-responsive">
+                    <thead>
+                    <tr>
+                        <th>NO</th>
+                        <th>사용자(Email)</th>
+                        <th>주문번호</th>
+                        <th>환불요청금액</th>
+                        <th>요청일시</th>
+                        <th>상태</th>
+                        <th>관리</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {{#refundList}}
+                    <!-- 리스트 반복  -->
+                    <tr>
+                        <td>{{id}}</td>
+                        <td>{{userName}}</td>
+                        <td>{{merchantUid}}</td>
+                        <td>{{amount}} P</td>
+                        <td>{{requestedAt}}</td>
+                        <td>{{statusDisplay}}</td>
+                        <td>
+                            <button data-bs-toggle="modal" data-bs-target="#myModal"
+                                    class="btn btn-outline-secondary btn-sm"
+                                    onclick="openRefundModel({{id}}, '{{userName}}', '{{reason}}', {{amount}}, '{{statusDisplay}}')">상세</button>
+                        </td>
+                        <!--   openRefundModel (...) -> 반드시 문자열을 작은 따옴표로 감싸줘야 함.
+                                 userName -> ssar2 을 변수명으로 인식함 문자열이다 명시 해야 함. -->
+                    </tr>
+                    <!-- 리스트 반복  -->
+                    {{/refundList}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card-footer">
+            <a href="/board/list" class="btn btn-secondary">게시글 목록</a>
+        </div>
+    </div>
+
+</div>
+
+<!-- The Modal -->
+<div class="modal fade" id="myModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h4 class="modal-title">환불요청상세</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Modal body -->
+            <div class="modal-body">
+                <!-- 상세보기 누를 시 [(1) ,(2), (3)] -->
+                <!-- 현재 환불 요청 테이블에 pk 값이 몇 번인지 잠시 저장 (거절 확정시 -> 서버로 pk 값 던져야 함 -->
+                <input type="hidden" id="modalRefundId">
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small">신청자</label>
+                    <div class="form-control-plaintext fw-bold" id="modalUsername"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small">환불 요청 금액</label>
+                    <!-- 정수값으로 설정 -> NaN  뜸   -->
+                    <div class="form-control-plaintext fw-bold" id="modalAmount"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label text-muted small">환불 사유</label>
+                    <div class="form-control-plaintext fw-bold" id="modalReason"></div>
+                </div>
+
+                <div class="mb-3" id="rejectReasonDiv" style="display:none;">
+                    <label class="form-label text-danger fw-bold">거절 사유 입력</label>
+                    <textarea class="form-control" id="rejectReasonInput" rows="2" placeholder="거절 사유를 입력하세요" required></textarea>
+                </div>
+
+            </div>
+
+            <!-- Modal footer -->
+            <div class="modal-footer" id="modalFooter">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">닫기</button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    // 모달 열기 (데이터 바인딩) - 순서 조심
+    function openRefundModel(id, username, reason, amount,  statusDisplay) {
+        // 데이터 주입
+        document.getElementById('modalRefundId').value = id;
+        document.getElementById('modalUsername').textContent = username;
+        document.getElementById('modalAmount').textContent = parseInt(amount).toLocaleString() + ' P';
+        document.getElementById('modalReason').textContent = reason ? reason : "(사유 없음)";
+
+        // UI 초기화
+        const footer = document.getElementById('modalFooter');
+        const rejectDiv = document.getElementById('rejectReasonDiv');
+        rejectDiv.style.display = 'none';
+        document.getElementById('rejectReasonInput').value = '';
+
+        // 상태별 버튼 분기 (대기중일 때만 승인/거절 버튼 표시)
+        //  TODO - 반드시 수정
+        if (statusDisplay === '대기중') {
+            footer.innerHTML = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+                                <button type="button" class="btn btn-danger" onclick="toggleRejectInput()">거절</button>
+                                <button type="button" class="btn btn-primary" onclick="approveRefund('${id}')">환불 승인</button>`;
+        } else {
+            footer.innerHTML = `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>`;
+        }
+
+    }
+
+    // 거절 버튼 누르면 입력창 보이기
+    function toggleRejectInput() {
+        const rejectDiv = document.getElementById('rejectReasonDiv');
+        const footer = document.getElementById('modalFooter');
+        const id = document.getElementById('modalRefundId').value;
+        // rejectReasonDiv 보여 주기
+        rejectDiv.style.display = 'block';
+        footer.innerHTML = `
+            <button type="button" class="btn btn-secondary" onclick="hideRejectInput()">취소</button>
+            <button type="button" class="btn btn-danger" onclick="rejectRefund(${id})">거절 확정</button>
+        `;
+    }
+
+    // 거절 버튼 누른 후 [취소] [거절 확정] 버튼이 나옴
+    // 취소 눌렀을 경우 다시 ---> [닫기] [거절] [환불 승인] 버튼이 보여야 함
+    function hideRejectInput() {
+        const id = document.getElementById('modalRefundId').value;
+        const rejectDiv = document.getElementById('rejectReasonDiv');
+        rejectDiv.style.display = 'none';
+        document.getElementById('rejectReasonInput').value = '';
+
+        const footer = document.getElementById('modalFooter');
+        footer.innerHTML = `
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">닫기</button>
+            <button type="button" class="btn btn-danger" onclick="toggleRejectInput()">거절</button>
+            <button type="button" class="btn btn-primary" onclick="approveRefund(${id})">환불 승인</button>
+        `;
+    }
+
+    // 환불 거절 처리 - 동적으로 form 생성 및 스크립트로 form 전송 하기
+    function rejectRefund(id) {
+        const rejectReason = document.getElementById('rejectReasonInput').value.trim();
+
+        if (!rejectReason) {
+            alert('거절 사유를 입력해주세요.');
+            return;
+        }
+
+        if (!confirm('환불 요청을 거절하시겠습니까?')) {
+            return;
+        }
+
+        // 폼 생성하여 POST 요청
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/refund/${id}/reject`;
+
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'rejectReason';
+        input.value = rejectReason;
+        form.appendChild(input);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+
+    // 환불 승인 처리
+    function approveRefund(id) {
+        if (!confirm('환불을 승인하시겠습니까?\n(즉시 환불처리 됩니다)')) {
+            return;
+        }
+
+        // 폼 생성하여 POST 요청
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/admin/refund/${id}/approve`;
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+</script>
+
+{{> layout/footer}}
+
+

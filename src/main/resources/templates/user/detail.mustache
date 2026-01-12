@@ -1,0 +1,74 @@
+{{> layout/header}}
+
+<div class="container p-5">
+    <div class="card">
+        <div class="card-header"><b>회원정보</b></div>
+        <div class="card-body">
+            <!-- 프로필 이미지 표시
+                 주의: 예전에는 user.profileImage 섹션 안에서 다시 user.* 값을 사용해
+                 Mustache 컨텍스트가 뒤섞이며 오류가 발생했다.
+                 현재 코드는 먼저 user 섹션으로 컨텍스트를 user 로 고정한 뒤,
+                 그 안에서 profileImage, profilePath, local 필드를 사용하도록 변경하였다. -->
+            <div class="text-center mb-4">
+                {{#user}}
+                    {{#profileImage}}
+                        <!--  user 엔티티 profilePath 로직 추가  -->
+                        <img src="{{profilePath}}"
+                             alt="프로필 사진" 
+                             class="rounded-circle border" 
+                             style="width: 200px; height: 200px; object-fit: cover;">
+                        <div class="mt-2">
+                            {{#local}}
+                                <form action="/user/profile-image/delete" method="post" style="display: inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger"
+                                            onclick="return confirm('프로필 사진을 삭제하시겠습니까?');">
+                                        프로필 사진 삭제
+                                    </button>
+                                </form>
+                            {{/local}}
+                        </div>
+                    {{/profileImage}}
+                    {{^profileImage}}
+                        <div class="rounded-circle bg-secondary d-inline-flex align-items-center justify-content-center border" 
+                             style="width: 200px; height: 200px;">
+                            <span class="text-white fs-5">프로필 사진 없음</span>
+                        </div>
+                    {{/profileImage}}
+                {{/user}}
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-bold">사용자명</label>
+                <p class="form-control-plaintext">{{user.username}}</p>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">이메일</label>
+                <p class="form-control-plaintext">{{user.email}}</p>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">가입일</label>
+                <p class="form-control-plaintext">{{user.createdAt}}</p>
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-bold">보유 포인트</label>
+
+                <p class="form-control-plaintext">
+                    <span class="badge bg-primary fs-6">{{user.point}} P</span>
+                </p>
+            </div>
+
+            <div class="d-grid gap-2">
+                <a href="/user/point/charge" class="btn btn-success">포인트 충전</a>
+                <a href="/user/payment/list" class="btn btn-warning">결제 내역</a>
+                <a href="/user/purchase/list" class="btn btn-info">구매 내역</a>
+                {{#user.local}}
+                    <a href="/user/update" class="btn btn-primary">회원정보 수정</a>
+                {{/user.local}}
+                <a href="/board/list" class="btn btn-secondary">목록으로</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{> layout/footer}}
+

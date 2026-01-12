@@ -1,0 +1,158 @@
+{{> layout/header}}
+
+<div class="container p-5">
+
+    {{#isOwner}}
+        <div class="d-flex justify-content-end mb-2">
+            <a href="/board/{{board.id}}/update" class="btn btn-warning me-2">수정</a>
+            <form action="/board/{{board.id}}/delete" method="post">
+                <button class="btn btn-danger">삭제</button>
+            </form>
+        </div>
+    {{/isOwner}}
+
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div>
+            <!-- 유료 게시글 표시 여부 -->
+            {{#board.premium}}
+                <span class="badge bg-danger">유료 게시글</span>
+            {{/board.premium}}
+        </div>
+        <div>
+            <b>작성자</b> : {{board.username}}
+        </div>
+    </div>
+
+    <div>
+        <h2><b>{{board.title}}</b></h2>
+        <hr />
+        <div class="m-4 p-2">
+            <!--  유료 게시글일 경우 표시  -->
+            {{#board.premium}}
+                <!--  유료 게시글 - 구매 안함, 자신이 작성한 글 아님  -->
+                {{^board.isPurchased}}
+                    {{^isOwner}}
+                    <div class="position-relative">
+                <!--
+                position-absolute: "부모(relative) 기준으로 둥둥 떠다니겠다."
+                top-50 start-50: "위에서 50%, 왼쪽에서 50% 위치로 이동해라."
+                문제점: 이렇게만 하면 요소의 **'왼쪽 위 모서리'**가 정중앙에 위치하게 되어, 전체적으로 오른쪽 아래로 치우쳐 보입니다.
+                translate-middle: "내 몸집의 절반만큼 다시 왼쪽 위로 빽(Back) 해라."
+                해결: 이제 요소의 **'배꼽(정중앙)'**이 화면 정중앙에 오게 됩니다.
+                -->
+                    <div class="position-absolute top-50 start-50 translate-middle" style=" z-index: 1000; background:rgba(255,255,255,0.9); border: 1px solid black; padding: 2rem; border-radius: 10px;">
+                        <h4 class="text-danger mb-3">🔒 유료 게시글</h4>
+                        <p class="mb-3">이 게시글을 보려면 <strong>500포인트</strong>가 필요합니다.</p>
+                        {{#sessionUser}}
+                            <button type="button" class="btn btn-primary d-flex" data-bs-toggle="modal" data-bs-target="#purchaseModal">
+                                구매하기
+                            </button>
+                        {{/sessionUser}}
+                        {{^sessionUser}}
+                            <a href="/login" class="btn btn-primary">로그인 후 구매</a>
+                        {{/sessionUser}}
+                    </div>
+
+                    {{/isOwner}}
+                    {{#isOwner}}
+                        <!-- 작성자는 무료로 볼 수 있음  -->
+                        {{board.content}}
+                    {{/isOwner}}
+
+                {{/board.isPurchased}}
+                {{#board.isPurchased}}
+                    <!-- 구매한 경우 -->
+                    {{board.content}}
+                {{/board.isPurchased}}
+            {{/board.premium}}
+            <!--  무료 게시글일 경우  표시 -->
+            {{^board.premium}}
+                {{board.content}}
+            {{/board.premium}}
+        </div>
+    </div>
+
+
+
+    <!--  댓글 관련 로직    -->
+    <div class="card mt-3">
+        {{#sessionUser}}
+            <div class="card-body">
+                <form action="/reply/save" method="post">
+                    <input type="hidden" name="boardId" value="{{board.id}}">
+                    <textarea class="form-control" rows="2" name="comment" placeholder="댓글을 입력하세요"></textarea>
+                    <div class="d-flex justify-content-end">
+                        <button type="submit" class="btn btn-outline-primary mt-1">댓글등록</button>
+                    </div>
+                </form>
+            </div>
+        {{/sessionUser}}
+        {{^sessionUser}}
+            <div class="card-body">
+                <p class="text-muted text-center p-2">댓글을 작성하려면 <a href="/login" class="text-primary">로그인</a>이 필요합니다.</p>
+            </div>
+        {{/sessionUser}}
+
+        <div class="card-footer">
+            <b>댓글 리스트</b>
+        </div>
+        <div class="list-group">
+            {{#replyList}}
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div class="d-flex flex-column">
+                        <div class="d-flex align-items-center mb-1">
+                            <div class="px-2 py-1 me-2 bg-primary text-white rounded">{{username}}</div>
+                            <small class="text-muted">{{createdAt}}</small>
+                        </div>
+                        <div>{{comment}}</div>
+                    </div>
+
+                    {{#isOwner}}
+                        <form action="/reply/{{id}}/delete" method="post">
+                            <button type="submit" class="btn btn-danger btn-sm">🗑 삭제</button>
+                        </form>
+                    {{/isOwner}}
+                </div>
+            {{/replyList}}
+
+            {{^replyList}}
+                <div class="list-group-item text-muted text-center py-3">
+                    작성된 댓글이 없습니다.
+                </div>
+            {{/replyList}}
+        </div>
+    </div>
+</div>
+
+
+<!-- The Modal (부트스트랩 검색) -->
+<div class="modal fade" id="purchaseModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+
+            <!-- Modal Header -->
+            <div class="modal-header">
+                <h4 class="modal-title">게시글 구매</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <!-- Modal body -->
+            <div class="modal-body">
+                <p>이 게시글을 <strong>500포인트</strong>로 구매하시겠습니까?</p>
+                <p class="text-muted small">구매 후에는 언제든지 다시 볼 수 있습니다.</p>
+            </div>
+
+            <!-- Modal footer -->
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-bs-dismiss="modal">취소</button>
+                <form action="/board/{{board.id}}/purchase" method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-primary">구매하기</button>
+                </form>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+{{> layout/footer}}
