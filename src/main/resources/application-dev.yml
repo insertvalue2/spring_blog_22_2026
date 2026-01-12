@@ -71,8 +71,8 @@ spring:
   servlet:
     multipart:
       enabled: true                    # 파일 업로드 활성화
-      max-file-size: 10MB              # 개별 파일 최대 크기 (10MB)
-      max-request-size: 10MB           # 전체 요청 최대 크기 (10MB)
+      max-file-size: 50MB              # 개별 파일 최대 크기 (10MB)
+      max-request-size: 50MB           # 전체 요청 최대 크기 (10MB)
       file-size-threshold: 2KB         # 메모리에 저장할 임계값 (2KB 이상이면 디스크에 저장)
 
   # 이메일 발송 설정

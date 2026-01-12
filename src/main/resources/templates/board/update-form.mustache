@@ -1,5 +1,8 @@
 {{> layout/header}}
 
+<!-- Summernote Bootstrap 5 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-bs5.min.css" rel="stylesheet">
+
 <div class="container p-5">
 
     <div class="card">
@@ -21,7 +24,8 @@
                            value="{{board.title}}">
                 </div>
                 <div class="mb-3">
-                    <textarea class="form-control" rows="5" name="content">{{board.content}}</textarea>
+                    <!-- Summernote 에디터 -->
+                    <textarea id="summernote" class="form-control" name="content">{{{board.content}}}</textarea>
                 </div>
                 <div class="mb-3">
                     <div class="form-check">
@@ -39,5 +43,53 @@
         </div>
     </div>
 </div>
+
+<!-- Summernote Bootstrap 5 JS -->
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.20/dist/summernote-bs5.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#summernote').summernote({
+            placeholder: '내용을 입력하세요',
+            tabsize: 2,
+            height: 400,
+            lang: 'ko-KR',
+            // 이미지 업로드 콜백 설정 (Base64로 변환)
+            callbacks: {
+                onImageUpload: function(files) {
+                    // Summernote에서 이미지를 업로드할 때 호출되는 콜백
+                    // files: 업로드할 파일 배열
+                    for (let i = 0; i < files.length; i++) {
+                        insertImageAsBase64(files[i]);
+                    }
+                }
+            }
+        });
+
+        // 이미지를 Base64로 변환하여 에디터에 삽입하는 함수
+        function insertImageAsBase64(file) {
+            // FileReader 객체 생성 (파일을 읽기 위한 API)
+            let reader = new FileReader();
+            
+            // 파일 읽기 완료 시 실행되는 콜백
+            reader.onload = function(e) {
+                // e.target.result: Base64로 인코딩된 이미지 데이터
+                // data:image/jpeg;base64,/9j/4AAQSkZJRg... 형태
+                let base64Image = e.target.result;
+                
+                // Summernote 에디터에 Base64 이미지 삽입
+                $('#summernote').summernote('insertImage', base64Image);
+            };
+            
+            // 파일 읽기 실패 시 에러 처리
+            reader.onerror = function() {
+                alert('이미지 읽기에 실패했습니다.');
+            };
+            
+            // 파일을 Data URL(Base64) 형태로 읽기
+            // readAsDataURL: 파일을 Base64 인코딩된 문자열로 변환
+            reader.readAsDataURL(file);
+        }
+    });
+</script>
 
 {{> layout/footer}}

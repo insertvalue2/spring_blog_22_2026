@@ -104,15 +104,13 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
     Optional<Board> findByIdWithUser(@Param("id") Long id);
     
     /**
-     * 게시글 페이징 조회 (작성자 정보 포함, JOIN FETCH 사용)
+     * 게시글 페이징 조회 (작성자 정보 포함)
      * 
-     * JOIN FETCH와 페이징을 함께 사용할 때 주의사항:
-     * - JOIN FETCH를 사용하면 count 쿼리가 정확하지 않을 수 있음
-     * - 하지만 DISTINCT를 사용하면 정확한 count를 얻을 수 있음
-     * - Spring Data JPA가 자동으로 count 쿼리를 생성
+     * JOIN FETCH와 페이징을 함께 사용할 수 없으므로 일반 JOIN을 사용합니다.
+     * 배치 페치 사이즈 설정으로 N+1 문제를 방지합니다.
      * 
      * 생성되는 SQL:
-     * SELECT DISTINCT b.*, u.* 
+     * SELECT b.*, u.* 
      * FROM board_tb b 
      * INNER JOIN user_tb u ON b.user_id = u.id 
      * ORDER BY b.created_at DESC
@@ -121,8 +119,7 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
      * @param pageable 페이징 정보 (페이지 번호, 페이지 크기, 정렬)
      * @return 페이징된 게시글 목록 (작성자 정보 포함)
      */
-    @Query(value = "SELECT DISTINCT b FROM Board b JOIN FETCH b.user ORDER BY b.createdAt DESC",
-           countQuery = "SELECT COUNT(DISTINCT b) FROM Board b")
+    @Query("SELECT b FROM Board b JOIN b.user ORDER BY b.createdAt DESC")
     Page<Board> findAllWithUserOrderByCreatedAtDesc(Pageable pageable);
     
     /**
@@ -130,15 +127,18 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
      * 
      * LIKE 검색:
      * - 제목(title) 또는 내용(content)에 검색어가 포함된 게시글 조회
-     * - 대소문자 구분 없이 검색 (LOWER 함수 사용)
+     * - MySQL의 기본 collation이 case-insensitive이므로 대소문자 구분 없이 검색됨
      * - %keyword% 형태로 부분 일치 검색
      * 
+     * JOIN FETCH와 페이징을 함께 사용할 수 없으므로 일반 JOIN을 사용합니다.
+     * 배치 페치 사이즈 설정으로 N+1 문제를 방지합니다.
+     * 
      * 생성되는 SQL:
-     * SELECT DISTINCT b.*, u.* 
+     * SELECT b.*, u.* 
      * FROM board_tb b 
      * INNER JOIN user_tb u ON b.user_id = u.id 
-     * WHERE (LOWER(b.title) LIKE LOWER('%keyword%') 
-     *    OR LOWER(b.content) LIKE LOWER('%keyword%'))
+     * WHERE (b.title LIKE '%keyword%' 
+     *    OR b.content LIKE '%keyword%')
      * ORDER BY b.created_at DESC
      * LIMIT ? OFFSET ?
      * 
@@ -146,13 +146,10 @@ public interface BoardRepository extends JpaRepository<Board, Long> {
      * @param pageable 페이징 정보
      * @return 검색된 게시글 목록 (페이징 적용)
      */
-    @Query(value = "SELECT DISTINCT b FROM Board b JOIN FETCH b.user " +
-           "WHERE LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "   OR LOWER(b.content) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "ORDER BY b.createdAt DESC",
-           countQuery = "SELECT COUNT(DISTINCT b) FROM Board b " +
-           "WHERE LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "   OR LOWER(b.content) LIKE LOWER(CONCAT('%', :keyword, '%'))")
+    @Query("SELECT b FROM Board b JOIN b.user " +
+           "WHERE b.title LIKE CONCAT('%', :keyword, '%') " +
+           "   OR b.content LIKE CONCAT('%', :keyword, '%') " +
+           "ORDER BY b.createdAt DESC")
     Page<Board> findByTitleContainingOrContentContaining(@Param("keyword") String keyword, Pageable pageable);
     
     /**

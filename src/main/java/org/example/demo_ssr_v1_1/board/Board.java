@@ -21,6 +21,7 @@ public class Board {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String title;
+    @Lob // 대용량 텍스트 저장을 위한 어노테이션 (MySQL에서는 LONGTEXT 타입으로 자동 매핑) - Base64 이미지가 포함된 HTML 콘텐츠 저장용
     private String content;
     // N : 1
     @ManyToOne(fetch = FetchType.LAZY)
