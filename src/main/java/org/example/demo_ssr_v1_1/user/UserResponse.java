@@ -4,21 +4,20 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 
-
-
 /**
- * 사용자 응답 DTO
- * 
- * Open Session in View가 false일 때:
- * - 트랜잭션이 끝나면 세션이 종료되어 LAZY 로딩 불가
- * - Service에서 필요한 데이터를 모두 조회하고 DTO로 변환하여 반환
- * - 엔티티를 직접 반환하지 않고 DTO를 반환하여 계층 간 결합도 감소
+ * User 도메인의 "응답(Response) DTO" 묶음 클래스.
+ *
+ * [왜 엔티티 대신 DTO 를 반환하는가?]
+ * 1. OSIV(Open Session In View) 가 false 이므로, 트랜잭션이 끝난 뒤
+ *    뷰에서 엔티티를 만지면 LazyInitializationException 이 날 수 있다.
+ * 2. 엔티티에는 password, roles 같은 민감/비대용 필드가 있어서 뷰/외부 API 에 그대로 노출하면 안 된다.
+ * 3. 계층 간 결합을 끊어준다 (Service ↔ Controller ↔ View 가 엔티티 모양에 의존하지 않음).
  */
 public class UserResponse {
 
-    /**
-     * 회원정보 수정 화면 응답 DTO
-     */
+    // =========================================================================
+    // 회원정보 수정 폼에 내려보낼 DTO
+    // =========================================================================
     @Data
     public static class UpdateFormDTO {
         private Long id;
@@ -32,12 +31,9 @@ public class UserResponse {
         }
     }
 
-    /**
-     * 로그인 응답 DTO (세션 저장용)
-     * 
-     * 주의: 세션에는 엔티티를 저장하지만, 
-     * 다른 곳으로 전달할 때는 DTO를 사용하는 것이 좋음
-     */
+    // =========================================================================
+    // 로그인 응답 / 세션 저장용 DTO
+    // =========================================================================
     @Data
     public static class LoginDTO {
         private Long id;
@@ -51,27 +47,41 @@ public class UserResponse {
         }
     }
 
-    // JSON 형식에 코딩 컨벤션이 스네이크 케이스를 카멜 노테이션으로 할당하라!
+    // =========================================================================
+    // 카카오 OAuth 응답 모델
+    // =========================================================================
+
+    /**
+     * 카카오 토큰 엔드포인트 응답.
+     *
+     * [@JsonNaming]
+     * 카카오는 JSON 필드명을 snake_case("access_token") 로 주고,
+     * 자바는 camelCase("accessToken") 가 관례이므로 자동 변환을 걸어둔다.
+     */
     @JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
     @Data
     public static class OAuthToken {
-        private String tokenType;	// 토큰	토큰 타입, bearer로 고정(JWT란 의미)
-        private String accessToken;	// String 사용자 액세스 토큰 값(카카오에 사용자 정보를 요청할 수 있는 인증 토큰)
-        private Integer expiresIn;
-        private String refreshToken;
-        private String refreshTokenExpiresIn;
-
+        private String tokenType;            // "bearer" 고정
+        private String accessToken;          // 이후 프로필 조회 API 호출 시 사용할 토큰
+        private Integer expiresIn;           // 액세스 토큰 만료(초)
+        private String refreshToken;         // 재발급용 토큰
+        private String refreshTokenExpiresIn;// 재발급 토큰 만료(초)
     }
 
+    /**
+     * 카카오 사용자 정보 응답.
+     */
     @JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
     @Data
     public static class KakaoProfile {
-        private Long id;
-        private String connectedAt;
-        private Properties properties;
+        private Long id;                     // 카카오 회원 번호 (고유)
+        private String connectedAt;          // 서비스 연결 시각
+        private Properties properties;       // 닉네임/프로필 이미지 등
     }
 
-
+    /**
+     * 카카오 프로필 properties 하위 필드.
+     */
     @JsonNaming(value = PropertyNamingStrategies.SnakeCaseStrategy.class)
     @Data
     public static class Properties {
@@ -79,6 +89,4 @@ public class UserResponse {
         private String profileImage;
         private String thumbnailImage;
     }
-
 }
-

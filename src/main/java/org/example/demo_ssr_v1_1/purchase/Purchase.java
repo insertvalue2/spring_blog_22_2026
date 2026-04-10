@@ -1,6 +1,5 @@
 package org.example.demo_ssr_v1_1.purchase;
 
-
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Data;
@@ -11,22 +10,24 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.sql.Timestamp;
 
-
 /**
- * 구매 내역 엔티티
-
- * User와 Board의 Many-to-Many 관계를 Purchase란 중간 테이블로 구현합니다.
- * - 한 사용자는 여러 게시글을 구매할 수 있습니다.
- * - 한 게시글은 여러 사용자에게 구매될 수 있습니다.
-
- * 단방향 관계 설계:
- * - Purchase -> User (ManyToOne): 구매한 사용자
- * - Purchase -> Board (ManyToOne): 구매한 게시글
+ * Purchase (구매 내역) 엔티티
+ *
+ * [용도]
+ *  · 유료 게시글을 구매한 이력을 기록한다.
+ *  · (User, Board) 쌍에 UNIQUE 제약을 걸어 "중복 구매" 를 DB 수준에서 차단한다.
+ *
+ * [관계 설계]
+ *  · Purchase → User  (N:1) : 구매자
+ *  · Purchase → Board (N:1) : 구매한 게시글
+ *  · 양방향은 학습 단순화를 위해 쓰지 않는다.
+ *
+ * [price 필드가 별도로 있는 이유]
+ *  · 게시글 가격이 나중에 바뀔 수 있으므로,
+ *    "이 구매가 얼마에 일어났는지" 를 구매 시점에 스냅샷으로 저장한다.
  */
 @Data
 @NoArgsConstructor
-// 홍길동, 1번 게시글 구매 (유니크)
-// 홍길동, 1번 게시글 구매 (중복 불가)
 @Table(
         name = "purchase_tb",
         uniqueConstraints = {
@@ -35,21 +36,20 @@ import java.sql.Timestamp;
 )
 @Entity
 public class Purchase {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 단방향 관계: Purchase -> User (N:1)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
 
-    // 단방향 관계: Purchase -> Board (N:1)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id")
     private Board board;
 
-    // 구매 시 지불한 포인트
+    /** 구매 당시 차감한 포인트 */
     private Integer price;
 
     @CreationTimestamp
@@ -61,5 +61,4 @@ public class Purchase {
         this.board = board;
         this.price = price;
     }
-
 }

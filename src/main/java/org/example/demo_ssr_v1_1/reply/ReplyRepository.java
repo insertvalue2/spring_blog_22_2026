@@ -9,53 +9,54 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 댓글 Repository 인터페이스
- * 
- * 핵심 개념:
- * 1. JpaRepository<Reply, Long>: Spring Data JPA가 제공하는 인터페이스
- * 2. 쿼리 메서드: 메서드 이름만으로 쿼리 자동 생성
- * 3. @Query: 복잡한 쿼리는 직접 작성
+ * Reply 엔티티 Repository
+ *
+ * [핵심 개념]
+ *  1) JpaRepository 기본 메서드(save, findById, delete ...) 를 그대로 사용할 수 있다.
+ *  2) 상세/목록 조회는 JOIN FETCH 로 작성자(User) 와 게시글(Board) 을 한 번에 가져와 N+1 을 피한다.
+ *  3) deleteByBoardId 는 Spring Data JPA 쿼리 메서드 규칙으로 자동 생성된다.
  */
 @Repository
 public interface ReplyRepository extends JpaRepository<Reply, Long> {
-    
+
     /**
-     * 게시글 ID로 댓글 목록 조회 (작성자 정보 포함, JOIN FETCH 사용)
-     * 
-     * JOIN FETCH를 사용하여 Reply, Board, User를 한 번의 쿼리로 함께 조회합니다.
-     * OSIV False 환경에서도 안전하게 사용 가능합니다.
-     * 
-     * 생성되는 SQL:
-     * SELECT r.*, b.*, u.* 
-     * FROM reply_tb r 
-     * INNER JOIN board_tb b ON r.board_id = b.id 
-     * INNER JOIN user_tb u ON r.user_id = u.id 
-     * WHERE r.board_id = ?
-     * ORDER BY r.created_at ASC
-     * 
-     * @param boardId 게시글 ID
-     * @return 댓글 목록 (생성일 기준 오름차순)
+     * 게시글 ID 로 댓글 목록 조회 (작성자 + 게시글 함께 로딩).
+     *
+     * 실행 SQL (의사 코드) :
+     *   SELECT r.*, u.*, b.*
+     *   FROM reply_tb r
+     *   INNER JOIN user_tb u  ON r.user_id  = u.id
+     *   INNER JOIN board_tb b ON r.board_id = b.id
+     *   WHERE r.board_id = :boardId
+     *   ORDER BY r.created_at ASC
      */
-    @Query("SELECT r FROM Reply r JOIN FETCH r.user JOIN FETCH r.board WHERE r.board.id = :boardId ORDER BY r.createdAt ASC")
+    @Query("SELECT r FROM Reply r "
+            + "JOIN FETCH r.user "
+            + "JOIN FETCH r.board "
+            + "WHERE r.board.id = :boardId "
+            + "ORDER BY r.createdAt ASC")
     List<Reply> findByBoardIdWithUser(@Param("boardId") Long boardId);
-    
+
     /**
-     * 댓글 ID로 조회 (작성자 정보 포함, JOIN FETCH 사용)
-     * 
-     * @param id 댓글 ID
-     * @return 댓글 (Optional)
+     * 댓글 ID 로 단건 조회 (작성자 + 게시글 포함).
      */
-    @Query("SELECT r FROM Reply r JOIN FETCH r.user JOIN FETCH r.board WHERE r.id = :id")
+    @Query("SELECT r FROM Reply r "
+            + "JOIN FETCH r.user "
+            + "JOIN FETCH r.board "
+            + "WHERE r.id = :id")
     Optional<Reply> findByIdWithUser(@Param("id") Long id);
-    
+
     /**
-     * 게시글 ID로 댓글 삭제
-     * 
-     * 게시글 삭제 시 외래키 제약조건 위반을 방지하기 위해
-     * 게시글에 속한 모든 댓글을 먼저 삭제하는 데 사용
-     * 
-     * @param boardId 게시글 ID
+     * 게시글 ID 로 해당 게시글의 모든 댓글을 삭제.
+     *
+     * [왜 필요한가?]
+     *  게시글을 삭제할 때, reply_tb 의 FK(board_id) 제약 때문에
+     *  자식(댓글) 을 먼저 지워야 부모(게시글) 를 지울 수 있다.
+     *
+     * [주의 - 벌크 삭제 쿼리]
+     *  이 메서드는 내부적으로 DELETE ... WHERE board_id = ? 를 한 번에 실행한다.
+     *  영속성 컨텍스트의 1차 캐시와 어긋날 수 있으므로, 학습용으로는
+     *  "게시글 삭제 트랜잭션의 맨 앞에서만" 호출한다고 생각하면 된다.
      */
     void deleteByBoardId(Long boardId);
 }
-

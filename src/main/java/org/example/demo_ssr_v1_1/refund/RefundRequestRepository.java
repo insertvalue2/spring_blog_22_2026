@@ -9,70 +9,69 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 환불 요청 Repository
+ * RefundRequest 엔티티 Repository
+ *
+ * [쿼리 전략]
+ *  · 목록/상세 조회는 JOIN FETCH 로 Payment 와 User 까지 한 번에 로딩한다.
+ *  · 환불 화면에는 "누가, 어떤 결제를, 얼마나" 가 같이 표시돼야 하기 때문.
+ *  · findByPaymentId 는 단순한 중복 검사용이라 JOIN FETCH 없이 둔다.
  */
 @Repository
 public interface RefundRequestRepository extends JpaRepository<RefundRequest, Long> {
 
     /**
-     * 사용자 ID로 환불 요청 목록 조회 (최신순)
-     * [용도] 사용자가 "내 환불 내역" 화면에서 자신이 요청한 환불 목록을 확인할 때 사용합니다.
-     * JOIN FETCH를 사용하여 N+1 문제 방지
+     * 특정 사용자의 환불 요청 목록 (최신순).
+     * 화면: 마이페이지 "내 환불 목록"
      */
     @Query("""
-        SELECT r FROM RefundRequest r
-        JOIN FETCH r.payment p
-        JOIN FETCH p.user u
-        WHERE r.user.id = :userId
-        ORDER BY r.createdAt DESC
-        """)
+            SELECT r FROM RefundRequest r
+            JOIN FETCH r.payment p
+            JOIN FETCH p.user u
+            WHERE r.user.id = :userId
+            ORDER BY r.createdAt DESC
+            """)
     List<RefundRequest> findAllByUserId(@Param("userId") Long userId);
 
     /**
-     * 전체 환불 요청 목록 조회 (관리자용, 최신순)
-     * [용도] 관리자가 "전체 환불 관리" 화면에서 모든 사용자의 환불 요청(대기, 승인, 거절 포함)을 한눈에 볼 때 사용합니다.
-     * JOIN FETCH를 사용하여 N+1 문제 방지
+     * 전체 환불 요청 목록 (최신순).
+     * 화면: 관리자 "전체 환불 관리" (상태 무관)
      */
     @Query("""
-        SELECT r FROM RefundRequest r
-        JOIN FETCH r.payment p
-        JOIN FETCH r.user u
-        ORDER BY r.createdAt DESC
-        """)
+            SELECT r FROM RefundRequest r
+            JOIN FETCH r.payment p
+            JOIN FETCH r.user u
+            ORDER BY r.createdAt DESC
+            """)
     List<RefundRequest> findAllWithUserAndPayment();
 
     /**
-     * 대기 중인 환불 요청 목록 조회 (관리자용)
-     * [용도] 관리자가 아직 처리하지 않은 "대기 중(PENDING)"인 건들만 따로 모아서 빠르게 승인/거절 업무를 처리할 때 사용합니다.
-     * JOIN FETCH를 사용하여 N+1 문제 방지
+     * 대기 중(PENDING) 환불 요청 목록 (최신순).
+     * 화면: 관리자 "처리할 건만" 보기
      */
     @Query("""
-        SELECT r FROM RefundRequest r
-        JOIN FETCH r.payment p
-        JOIN FETCH r.user u
-        WHERE r.status = 'PENDING'
-        ORDER BY r.createdAt DESC
-        """)
+            SELECT r FROM RefundRequest r
+            JOIN FETCH r.payment p
+            JOIN FETCH r.user u
+            WHERE r.status = 'PENDING'
+            ORDER BY r.createdAt DESC
+            """)
     List<RefundRequest> findAllPending();
 
-
-
     /**
-     * ID로 환불 요청 조회 (User와 Payment 함께 조회)
-     * [용도] 관리자가 특정 환불 건을 승인하거나 거절할 때, 해당 요청의 상세 정보(누가, 얼마를)를 정확히 불러오기 위해 사용합니다.
-     * JOIN FETCH를 사용하여 N+1 문제 방지
+     * id 로 단건 조회 + User + Payment 함께 로딩.
+     * 화면: 관리자 승인/거절 처리 직전.
      */
     @Query("""
-        SELECT r FROM RefundRequest r
-        JOIN FETCH r.payment p
-        JOIN FETCH r.user u
-        WHERE r.id = :id
-        """)
+            SELECT r FROM RefundRequest r
+            JOIN FETCH r.payment p
+            JOIN FETCH r.user u
+            WHERE r.id = :id
+            """)
     Optional<RefundRequest> findByIdWithUserAndPayment(@Param("id") Long id);
 
     /**
-     * 결제 ID로 환불 요청 조회 (중복 요청 방지용)
-     * [용도] 사용자가 환불 요청 버튼을 눌렀을 때, "이미 신청한 건인데 또 신청하는 건 아닌지" 중복 체크를 하기 위해 사용합니다.
+     * paymentId 로 환불 요청 조회.
+     * 용도: "이 결제에 이미 환불 요청이 걸려 있는가?" 를 빠르게 확인.
      */
     Optional<RefundRequest> findByPaymentId(Long paymentId);
 }

@@ -12,9 +12,16 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.sql.Timestamp;
 
 /**
- * 환불 요청 엔티티
+ * RefundRequest (환불 요청) 엔티티
  *
- * 사용자가 환불을 요청하고, 관리자가 승인/거절하는 과정을 관리합니다.
+ * [상태 흐름]
+ *   PENDING  → 사용자가 요청한 초기 상태
+ *   APPROVED → 관리자가 승인 (PortOne 환불 API 성공 후)
+ *   REJECTED → 관리자가 거절 (사유 기록)
+ *
+ * [Payment 와의 관계 설계]
+ *  · "결제 1건에 환불 요청 1건" 을 보장하기 위해 @ManyToOne + unique 조합을 사용.
+ *  · @OneToOne 도 가능하지만, 추후 "부분 환불(여러 번)" 확장을 열어두기 위해 @ManyToOne 으로 두었다.
  */
 @Data
 @NoArgsConstructor
@@ -26,29 +33,26 @@ public class RefundRequest {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 환불 요청한 사용자
+    /** 환불 요청자 */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // [확장성을 고려한 설계]
-    // 현재는 '전액 환불' 정책이라 결제(1) : 환불(1) 관계.
-    // 하지만 추후 '부분 환불(1:N)' 기능 도입 가능성을 열어두기 위해
-    // @OneToOne 대신 @ManyToOne에 unique 제약조건을 걸어 1:1을 구현.
+    /** 환불 대상 결제 (UNIQUE 제약으로 중복 요청 방지) */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "payment_id", nullable = false, unique = true)
     private Payment payment;
 
-    // 환불 사유
+    /** 환불 사유 (사용자가 직접 입력) */
     @Column(length = 500)
     private String reason;
 
-    // 환불 상태 (PENDING: 대기, APPROVED: 승인, REJECTED: 거절)
+    /** 환불 상태 (enum → DB 에는 STRING 으로 저장) */
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
     private RefundStatus status = RefundStatus.PENDING;
 
-    // 관리자 거절 사유 (거절 시에만 사용)
+    /** 거절 시 관리자 메모 (승인 시에는 null) */
     @Column(length = 500)
     private String rejectReason;
 
@@ -63,42 +67,36 @@ public class RefundRequest {
         this.user = user;
         this.payment = payment;
         this.reason = reason;
-        this.status = RefundStatus.PENDING;
+        this.status = RefundStatus.PENDING; // 초기 상태는 항상 PENDING
     }
 
+    // =========================================================================
+    // 상태 전이 메서드 (도메인 로직)
+    // =========================================================================
 
-    /**
-     * 환불 승인 처리
-     */
+    /** PENDING → APPROVED 로 상태 전이 */
     public void approve() {
         this.status = RefundStatus.APPROVED;
     }
 
-    /**
-     * 환불 거절 처리
-     */
+    /** PENDING → REJECTED 로 상태 전이 (사유 함께 기록) */
     public void reject(String rejectReason) {
         this.status = RefundStatus.REJECTED;
         this.rejectReason = rejectReason;
     }
 
-    /**
-     * 대기 중인 상태인지 확인
-     */
+    // =========================================================================
+    // 상태 확인 헬퍼
+    // =========================================================================
+
     public boolean isPending() {
         return this.status == RefundStatus.PENDING;
     }
 
-    /**
-     * 승인된 상태인지 확인
-     */
     public boolean isApproved() {
         return this.status == RefundStatus.APPROVED;
     }
 
-    /**
-     * 거절된 상태인지 확인
-     */
     public boolean isRejected() {
         return this.status == RefundStatus.REJECTED;
     }
