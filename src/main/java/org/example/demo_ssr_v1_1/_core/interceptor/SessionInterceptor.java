@@ -1,49 +1,60 @@
 package org.example.demo_ssr_v1_1._core.interceptor;
 
-import org.example.demo_ssr_v1_1.user.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.example.demo_ssr_v1_1.user.User;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.ModelAndView;
 
 /**
- * [세션 정보를 뷰 모델에 주입하는 인터셉터]
- * * 역할: 모든 컨트롤러가 실행된 후(postHandle), 공통적으로 뷰(Mustache)에서 
- * 로그인 사용자 정보(sessionUser)를 쓸 수 있도록 모델에 넣어주는 역할.
+ * 세션 사용자 정보를 View 모델에 "공통 주입" 해주는 인터셉터
+ *
+ * [이 클래스가 필요한 이유]
+ * Mustache 화면마다 "{{#sessionUser}} 로그아웃 {{/sessionUser}}" 처럼
+ * 로그인 사용자 정보를 써야 할 일이 많다.
+ * 매 컨트롤러에서 model.addAttribute("sessionUser", user) 를 반복하는 건 지치므로,
+ * postHandle(컨트롤러 실행 후, 뷰 렌더링 전) 에서 한 번에 모델에 집어넣어 준다.
+ *
+ * [postHandle 타이밍 이해]
+ *   preHandle → (컨트롤러 실행) → postHandle → (뷰 렌더링) → afterCompletion
+ *                                       ↑
+ *                           여기서 modelAndView 에 값을 더 넣을 수 있다.
+ *
+ * [주의]
+ * - @RestController 처럼 뷰를 렌더링하지 않는 경우 modelAndView 는 null 이다.
+ * - redirect: 응답도 ModelAndView 가 null 이거나 뷰 이름이 "redirect:..." 이므로 주의.
  */
 @Component
 public class SessionInterceptor implements HandlerInterceptor {
 
-    /**
-     * postHandle: 컨트롤러 로직 수행 '후', 뷰(HTML)가 그려지기 '전'에 실행됨.
-     * * @param modelAndView : 컨트롤러가 반환한 '데이터(Model)'와 '화면정보(View)'가 합쳐진 객체
-     */
     @Override
     public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
-                           ModelAndView modelAndView) throws Exception {
-        
-        // 주의: @ResponseBody나 RestController를 쓰면 modelAndView가 null일 수 있음.
-        // 따라서 null이 아니고, 실제 뷰 렌더링을 할 때만 로직을 실행해야 안전함.
-        if (modelAndView != null) {
-            
-            // [핵심] getSession(false)를 사용하는 이유:
-            // true(기본값)를 쓰면 로그인 안 한 방문자에게도 강제로 세션을 생성하여 메모리를 낭비함.
-            // false를 써서 "있으면 가져오고, 없으면 null을 반환"하게 하여 불필요한 세션 생성을 방지함.
-            HttpSession session = request.getSession(false);
-            
-            if (session != null) {
-                // 세션이 있다면 사용자 정보를 꺼냄
-                User sessionUser = (User) session.getAttribute("sessionUser");
-                
-                // [데이터 주입]
-                // 컨트롤러에서 model.addAttribute("sessionUser", user) 한 것과 똑같은 효과.
-                // 이제 모든 Mustache 파일에서 {{#sessionUser}}...{{/sessionUser}} 사용 가능.
-                if (sessionUser != null) {
-                    modelAndView.addObject("sessionUser", sessionUser);
-                }
-            }
+                           ModelAndView modelAndView) {
+
+        // 1. JSON 응답이거나 뷰가 없는 경우 종료 (주입할 곳이 없음)
+        if (modelAndView == null) {
+            return;
         }
+
+        // 2. 세션을 "만들지 않고" 꺼낸다.
+        //    - getSession(false) : 이미 있으면 반환, 없으면 null
+        //    - getSession()      : 없으면 새로 생성 → 비로그인 방문자에게도 세션이 생겨 메모리 낭비
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return;
+        }
+
+        // 3. 세션에 저장된 사용자 정보를 꺼낸다.
+        //    로그인 성공 시 UserController 가 session.setAttribute("sessionUser", user) 로 넣어준다.
+        User sessionUser = (User) session.getAttribute("sessionUser");
+        if (sessionUser == null) {
+            return;
+        }
+
+        // 4. 뷰 모델에 공통 주입.
+        //    이제 모든 Mustache 에서 {{sessionUser.username}}, {{#sessionUser.isAdmin}} 같이 사용 가능.
+        modelAndView.addObject("sessionUser", sessionUser);
     }
 }

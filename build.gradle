@@ -10,11 +10,11 @@ description = 'demo_ssr_v1_1'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(17)
+        // JDK 21 (LTS) 사용
+        languageVersion = JavaLanguageVersion.of(21)
     }
-    // 소스 파일 인코딩 설정 (한글 깨짐 방지)
-    sourceCompatibility = '17'
-    targetCompatibility = '17'
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
 }
 
 // 컴파일 시 인코딩 설정
@@ -40,6 +40,10 @@ dependencies {
     implementation 'org.springframework.security:spring-security-crypto'
     // 이메일 발송 라이브러리
     implementation 'org.springframework.boot:spring-boot-starter-mail'
+    // .env 파일 자동 로딩 (프로젝트 루트의 .env 를 Spring property 로 주입)
+    //  - 사용 예: application-*.yml 에서 ${KAKAO_CLIENT_ID}
+    //  - 공식: https://github.com/paulschwarz/spring-dotenv
+    implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
     compileOnly 'org.projectlombok:lombok'
 //    developmentOnly 'org.springframework.boot:spring-boot-devtools'

@@ -12,16 +12,13 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.sql.Timestamp;
 
 /**
- * 댓글 엔티티
- * 
- * 단방향 관계 설계:
- * - Reply -> Board (ManyToOne): 댓글이 속한 게시글
- * - Reply -> User (ManyToOne): 댓글 작성자
- * 
- * 양방향 관계를 사용하지 않는 이유:
- * - 단방향 관계가 더 단순하고 명확함
- * - 불필요한 양방향 참조로 인한 복잡성 제거
- * - 성능 최적화 (필요한 경우에만 조회)
+ * Reply (댓글) 엔티티
+ *
+ * [관계 설계 - 단방향 @ManyToOne]
+ *  · Reply → Board (N:1) : 댓글이 속한 게시글
+ *  · Reply → User  (N:1) : 댓글 작성자
+ *  · 학습용 단순화를 위해 양방향 매핑은 사용하지 않는다.
+ *    (양방향을 쓰면 toString/equals 무한루프, 영속성 전이 고민이 늘어난다)
  */
 @Data
 @NoArgsConstructor
@@ -32,20 +29,21 @@ public class Reply {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
+    /** 댓글 본문 (최대 500자) */
     @Column(length = 500)
-    private String comment;  // 댓글 내용 (최대 500자)
-    
-    // 단방향 관계: Reply -> Board (N:1)
+    private String comment;
+
+    /** 댓글이 달린 게시글 */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "board_id")
     private Board board;
-    
-    // 단방향 관계: Reply -> User (N:1)
+
+    /** 댓글 작성자 */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
     private User user;
-    
+
     @CreationTimestamp
     private Timestamp createdAt;
 
@@ -57,32 +55,31 @@ public class Reply {
     }
 
     /**
-     * 댓글 소유자 확인 로직
-     * 
-     * @param userId 확인할 사용자 ID
-     * @return 소유자 여부
+     * 댓글 소유자 확인.
+     *
+     * [동작 흐름]
+     *  1) user 또는 userId 가 null 이면 false (아무도 소유자가 아님)
+     *  2) 참조 엔티티의 id 와 비교
+     *  3) Long 객체 비교는 반드시 equals() 를 사용 (== 는 레퍼런스 비교라 위험)
      */
     public boolean isOwner(Long userId) {
         if (this.user == null || userId == null) {
-            System.out.println("isOwner: user 또는 userId가 null입니다. user=" + this.user + ", userId=" + userId);
             return false;
         }
-        // Long 타입 비교 시 equals() 사용 (== 비교는 위험)
-        // null 체크 후 비교
         Long replyUserId = this.user.getId();
         if (replyUserId == null) {
-            System.out.println("isOwner: replyUserId가 null입니다.");
             return false;
         }
-        boolean result = replyUserId.equals(userId);
-        System.out.println("isOwner: replyUserId=" + replyUserId + ", userId=" + userId + ", result=" + result);
-        return result;
+        return replyUserId.equals(userId);
     }
 
     /**
-     * 댓글 내용 수정
-     * 
-     * @param newComment 새로운 댓글 내용
+     * 댓글 내용 수정.
+     *
+     * [동작 흐름]
+     *  1) 빈 값 거부
+     *  2) 500자 초과 거부
+     *  3) comment 필드 덮어쓰기 (더티 체킹 기대)
      */
     public void update(String newComment) {
         if (newComment == null || newComment.trim().isEmpty()) {
@@ -94,4 +91,3 @@ public class Reply {
         this.comment = newComment;
     }
 }
-

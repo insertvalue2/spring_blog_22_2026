@@ -20,11 +20,13 @@ logging:
 spring:
 
   # 데이터베이스 연결 설정 (MySQL)
+  # - 값은 프로젝트 루트의 .env 파일에서 주입된다.
+  # - :뒤의 값은 .env 가 없을 때 사용되는 기본값(fallback).
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/myblog?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true
-    username: root
-    password: root
+    url: ${DB_URL:jdbc:mysql://localhost:3306/myblog?useSSL=false&serverTimezone=Asia/Seoul&characterEncoding=UTF-8&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD}
 
   # H2 데이터베이스 웹 콘솔 활성화 (개발용)
   # localhost:8080/h2-console로 접속 가능
@@ -82,11 +84,11 @@ spring:
     # SMTP 서버 포트 번호 (587: TLS(Transport Layer Security) 암호화 통신 전용 포트)
     # 인터넷으로 정보를 주고받을 때 정보를 암호화해서 아무도 훔쳐보지 못하게 하는 보안 기술
     port: 587
-    # 발신자 계정 (본인의 전체 Gmail 주소)
-    username: insertvalue2@gmail.com
-    # 발신자 인증 키 (Google 보안 설정에서 생성한 16자리 앱 비밀번호)
+    # 발신자 계정 (본인의 전체 Gmail 주소) - .env 에서 주입
+    username: ${MAIL_USERNAME}
+    # 발신자 인증 키 (Google 보안 설정에서 생성한 16자리 앱 비밀번호) - .env 에서 주입
     # 주의: 일반 구글 로그인 비밀번호가 아님
-    password: kvjmvmnngslgmtpz
+    password: ${MAIL_PASSWORD}
     # JavaMail 추가 속성 설정
     properties:
       mail:

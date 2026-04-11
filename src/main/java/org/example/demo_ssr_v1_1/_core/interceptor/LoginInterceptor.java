@@ -1,93 +1,56 @@
 package org.example.demo_ssr_v1_1._core.interceptor;
 
-import org.example.demo_ssr_v1_1._core.errors.exception.Exception401;
-import org.example.demo_ssr_v1_1.user.User;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
+import org.example.demo_ssr_v1_1._core.errors.exception.Exception401;
+import org.example.demo_ssr_v1_1.user.User;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
-import org.springframework.web.servlet.ModelAndView;
 
 /**
- * 로그인 인증 인터셉터
- * 
- * 컨트롤러에 진입하기 전에 세션에 로그인 정보가 있는지 확인합니다.
- * 로그인하지 않은 사용자의 경우 Exception401을 발생시켜 접근을 차단합니다.
- * 
- * @Component: IoC 컨테이너에 빈으로 등록 (싱글톤 패턴)
+ * 로그인 인증(Authentication) 인터셉터
+ *
+ * [이 클래스의 역할]
+ * - 컨트롤러 메서드가 실행되기 "이전(preHandle)" 에 가로채서,
+ *   세션에 sessionUser 가 담겨 있는지(= 로그인 상태인지) 검사한다.
+ * - 로그인 안 된 사용자가 보호된 URL(/board/save, /user/update 등)에 접근하면
+ *   Exception401 을 던져 /login 으로 유도한다.
+ *
+ * [인증 vs 인가 - 학생이 가장 많이 헷갈리는 부분]
+ *  · 인증(Authentication) : "너 누구야?" -> 로그인이 됐는지.  (이 클래스의 관심사)
+ *  · 인가(Authorization)  : "너 이거 할 수 있어?" -> 권한(USER/ADMIN)이 맞는지. (AdminInterceptor)
+ *
+ * [어디에 등록되나]
+ * WebMvcConfig.addInterceptors() 에서 addPathPatterns/excludePathPatterns 로
+ * "어느 URL 에 적용할지"를 정해준다. 이 파일에는 URL 매칭 정보가 없다는 점에 주의.
  */
 @Component
 public class LoginInterceptor implements HandlerInterceptor {
 
     /**
-     * preHandle: 컨트롤러 진입 전에 실행되는 메서드
-     * 
-     * 동작 흐름:
-     * 1. 요청이 들어오면 이 메서드가 먼저 실행됩니다.
-     * 2. 세션에서 sessionUser를 확인합니다.
-     * 3. sessionUser가 null이면 Exception401을 발생시켜 접근을 차단합니다.
-     * 4. sessionUser가 있으면 true를 반환하여 컨트롤러로 진입을 허용합니다.
-     * 
-     * @param request HTTP 요청 객체
-     * @param response HTTP 응답 객체
-     * @param handler 실행될 핸들러(컨트롤러 메서드)
-     * @return true: 컨트롤러로 진입 허용, false: 진입 차단
-     * @throws Exception 예외 발생 시
+     * 컨트롤러 진입 전에 호출된다.
+     *
+     * @return true  -> 컨트롤러 메서드 실행 허용
+     *         false -> 컨트롤러 메서드 실행 차단 (여기서는 예외를 던지므로 false 를 반환할 일이 없다)
      */
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler)
-            throws Exception {
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // 1. 세션을 꺼낸다.
+        //    getSession(false) : 세션이 없으면 null 을 반환한다. (새로 만들지 않는다)
+        //    getSession()      : 세션이 없으면 "새로 만들어서" 반환한다.
+        //    -> 비로그인 사용자에게 쓸데없는 세션을 만들지 않기 위해 false 를 사용한다.
+        HttpSession session = request.getSession(false);
 
-        // 세션에서 로그인 사용자 정보 조회
-        HttpSession session = request.getSession();
-        User sessionUser = (User) session.getAttribute("sessionUser");
-        
-        // 세션에 로그인 정보가 없으면 인증 오류 발생
+        // 2. 세션이 아예 없거나, 세션에 sessionUser 가 없으면 "로그인 안 한 상태"다.
+        User sessionUser = (session != null) ? (User) session.getAttribute("sessionUser") : null;
+
+        // 3. 로그인 안 됐으면 401 예외를 던진다. (MyExceptionHandler 가 받아서 /login 으로 이동시킴)
         if (sessionUser == null) {
             throw new Exception401("로그인 먼저 해주세요");
         }
-        
-        // 로그인 정보가 있으면 컨트롤러로 진입 허용
+
+        // 4. 로그인 상태 확인 완료 -> 컨트롤러 실행 허용
         return true;
     }
-
-    /**
-     * postHandle: 컨트롤러 실행 후, 뷰 렌더링 전에 실행되는 메서드
-     * 
-     * 컨트롤러에서 반환한 ModelAndView를 조작하거나 추가 작업을 수행할 수 있습니다.
-     * 현재는 기본 구현을 사용합니다.
-     * 
-     * @param request HTTP 요청 객체
-     * @param response HTTP 응답 객체
-     * @param handler 실행된 핸들러
-     * @param modelAndView 컨트롤러에서 반환한 ModelAndView
-     * @throws Exception 예외 발생 시
-     */
-    @Override
-    public void postHandle(HttpServletRequest request, HttpServletResponse response, Object handler,
-                           ModelAndView modelAndView) throws Exception {
-        // 필요시 뷰 렌더링 전 추가 작업 수행
-        HandlerInterceptor.super.postHandle(request, response, handler, modelAndView);
-    }
-
-    /**
-     * afterCompletion: 요청 처리가 완전히 끝난 후 실행되는 메서드
-     * 
-     * 뷰 렌더링까지 완료된 후에 호출됩니다.
-     * 리소스 정리나 로깅 등의 작업을 수행할 수 있습니다.
-     * 
-     * @param request HTTP 요청 객체
-     * @param response HTTP 응답 객체
-     * @param handler 실행된 핸들러
-     * @param ex 예외가 발생한 경우 예외 객체, 없으면 null
-     * @throws Exception 예외 발생 시
-     */
-    @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex)
-            throws Exception {
-        // 필요시 요청 완료 후 추가 작업 수행 (리소스 정리, 로깅 등)
-        HandlerInterceptor.super.afterCompletion(request, response, handler, ex);
-    }
 }
-
