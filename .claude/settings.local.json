@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pandoc --version)",
+      "Bash(npm list:*)",
+      "Bash(npm install:*)",
+      "Read(//c/Users/dnote/AppData/Roaming/npm/node_modules/docx/**)",
+      "Bash(npm root:*)",
+      "Bash(mkdir -p docs)",
+      "Bash(NODE_PATH=\"C:/Users/dnote/AppData/Roaming/npm/node_modules\" node .md2docx.js 보안.md docs/보안.docx)",
+      "Bash(NODE_PATH=\"C:/Users/dnote/AppData/Roaming/npm/node_modules\" node .md2docx.js 강의계획.md docs/강의계획.docx)",
+      "Bash(NODE_PATH=\"C:/Users/dnote/AppData/Roaming/npm/node_modules\" node .md2docx.js 프로젝트기획.md docs/프로젝트기획.docx)",
+      "Bash(python \"C:/Users/dnote/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/ad54f6b7-6e2f-422a-9dd2-5d377c21204e/c1bd027b-3d31-4ac4-a094-6331215ae01b/skills/docx/scripts/office/validate.py\" C:/Users/dnote/work_ai/spring_blog_22_2026/docs/보안.docx)",
+      "Bash(python \"C:/Users/dnote/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/ad54f6b7-6e2f-422a-9dd2-5d377c21204e/c1bd027b-3d31-4ac4-a094-6331215ae01b/skills/docx/scripts/office/validate.py\" C:/Users/dnote/work_ai/spring_blog_22_2026/docs/강의계획.docx)",
+      "Bash(python \"C:/Users/dnote/AppData/Roaming/Claude/local-agent-mode-sessions/skills-plugin/ad54f6b7-6e2f-422a-9dd2-5d377c21204e/c1bd027b-3d31-4ac4-a094-6331215ae01b/skills/docx/scripts/office/validate.py\" C:/Users/dnote/work_ai/spring_blog_22_2026/docs/프로젝트기획.docx)",
+      "Bash(unzip -l docs/보안.docx)",
+      "Bash(mkdir -p /tmp/ref_unpack)",
+      "Bash(unzip -o \"기획서_무인편의점_재고관리시스템.docx\" -d /tmp/ref_unpack)",
+      "Bash(grep -oE '<w:t[^>]*>[^<]{1,200}')",
+      "Read(//tmp/**)",
+      "Read(//c//**)",
+      "Read(//c/Users/dnote/**)",
+      "Bash(mkdir -p .ref_unpack)",
+      "Bash(unzip -o \"C:/Users/dnote/work_ai/class-convenience-store/기획서_무인편의점_재고관리시스템.docx\" -d .ref_unpack)",
+      "Bash(node .extract.js)",
+      "Bash(node -e ':*)",
+      "Bash(NODE_PATH=\"C:/Users/dnote/AppData/Roaming/npm/node_modules\" node .md2docx.js 기획서_스프링부트_SSR_블로그_결제플랫폼.md docs/기획서_스프링부트_SSR_블로그_결제플랫폼.docx)",
+      "Bash(./gradlew compileJava --no-daemon)",
+      "Bash(where java:*)",
+      "Bash(java -version)",
+      "Bash(./gradlew clean:*)",
+      "Bash(./gradlew dependencies:*)"
+    ]
+  }
+}
